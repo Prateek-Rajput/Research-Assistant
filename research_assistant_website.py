@@ -1,27 +1,39 @@
-from flask import Flask, request, render_template, jsonify
 import os
-import tempfile
 import fitz  # PyMuPDF for PDF extraction
 import requests
 import numpy as np
+import getpass
+from flask import Flask, render_template, request, redirect, url_for, flash
+from xml.etree import ElementTree as ET
 from sklearn.feature_extraction.text import TfidfVectorizer
 from langchain_anthropic import ChatAnthropic
-from xml.etree import ElementTree as ET
 
 app = Flask(__name__)
+app.secret_key = 'your_secret_key'
+
+# Function to set an environment variable for the API key
+def _set_env(var: str):
+    if not os.environ.get(var):
+        os.environ[var] = getpass.getpass(f"{var}: ")
+
+# Set the environment variable for the Anthropic API key
+_set_env("ANTHROPIC_API_KEY")
 
 # Initialize the LLM (Language Learning Model) from Anthropic
 llm = ChatAnthropic(model="claude-3-haiku-20240307")
 
+# Extract text from a PDF file
 def extract_text_from_pdf(pdf_path: str) -> str:
     text = ""
-    with fitz.open(pdf_path) as pdf_document:
-        for page_num in range(len(pdf_document)):
-            page = pdf_document.load_page(page_num)
-            text += page.get_text()
+    pdf_document = fitz.open(pdf_path)
+    for page_num in range(len(pdf_document)):
+        page = pdf_document.load_page(page_num)
+        text += page.get_text()
+    pdf_document.close()
     return text
 
-def get_top_terms(text: str, num_terms: int = 5) -> list[str]:
+# Extract the top terms from a given text using TF-IDF
+def get_top_terms(text: str, num_terms: int = 5) -> list:
     vectorizer = TfidfVectorizer(stop_words='english', max_features=num_terms)
     tfidf_matrix = vectorizer.fit_transform([text])
     feature_array = np.array(vectorizer.get_feature_names_out())
@@ -29,7 +41,8 @@ def get_top_terms(text: str, num_terms: int = 5) -> list[str]:
     top_terms = feature_array[tfidf_sorting][:num_terms]
     return top_terms
 
-def process_text_with_llm(prompt: str, text: str) -> str:
+# Process the text with the LLM and return the result
+def process_text_with_llm(prompt: str, text=None) -> str:
     full_prompt = f"{prompt}\n\n{text}"
     try:
         response = llm.invoke([{"role": "user", "content": full_prompt}])
@@ -37,6 +50,7 @@ def process_text_with_llm(prompt: str, text: str) -> str:
     except Exception as e:
         return f"Error during LLM processing: {e}"
 
+# Search for research papers in ArXiv using a query
 def search_arxiv(query: str) -> str:
     base_url = "http://export.arxiv.org/api/query"
     params = {
@@ -45,6 +59,7 @@ def search_arxiv(query: str) -> str:
         'max_results': 5
     }
     response = requests.get(base_url, params=params)
+    response.raise_for_status()
     data = response.text
 
     # Parse the XML response
@@ -59,19 +74,20 @@ def search_arxiv(query: str) -> str:
         arxiv_url = entry.find('{http://www.w3.org/2005/Atom}id').text
 
         output += (
-            f"Title: {title}\n"
-            f"Authors: {', '.join(authors)}\n"
-            f"Published: {published}\n"
-            f"URL: {arxiv_url}\n"
-            f"------------------------\n"
+            f"<h3>Title: {title}</h3>"
+            f"<p>Authors: {', '.join(authors)}</p>"
+            f"<p>Published: {published}</p>"
+            f"<p><a href='{arxiv_url}' target='_blank'>URL</a></p>"
         )
     
-    return output if output else "No results found."
+    return output if output else "<p>No results found.</p>"
 
+# Search for research papers in CrossRef using a query
 def search_crossref(query: str) -> str:
     base_url = "https://api.crossref.org/works"
     params = {'query': query, 'rows': 5}
     response = requests.get(base_url, params=params)
+    response.raise_for_status()
     data = response.json()
     items = data.get('message', {}).get('items', [])
     result_str = ""
@@ -83,81 +99,68 @@ def search_crossref(query: str) -> str:
         doi = item.get('DOI', 'N/A')
         url = item.get('URL', 'N/A')
         result_str += (
-            f"Title: {title}\n"
-            f"Authors: {authors}\n"
-            f"Published Date: {'-'.join(map(str, published_date))}\n"
-            f"Publisher: {publisher}\n"
-            f"DOI: {doi}\n"
-            f"URL: {url}\n"
-            f"------------------------\n"
+            f"<h3>Title: {title}</h3>"
+            f"<p>Authors: {authors}</p>"
+            f"<p>Published Date: {'-'.join(map(str, published_date))}</p>"
+            f"<p>Publisher: {publisher}</p>"
+            f"<p>DOI: {doi}</p>"
+            f"<p><a href='{url}' target='_blank'>URL</a></p>"
         )
-    return result_str if result_str else "No results found."
+    return result_str if result_str else "<p>No results found.</p>"
 
-def search_academic_databases(query: str) -> str:
-    results = ""
-    results += "ArXiv Results:\n"
-    results += search_arxiv(query) + "\n"
-    results += "CrossRef Results:\n"
-    results += search_crossref(query)
-    return results
+# Search academic databases (ArXiv and CrossRef) for papers related to the query
+def search_academic_databases(query, source):
+    if source == "arxiv":
+        return search_arxiv(query)
+    elif source == "crossref":
+        return search_crossref(query)
+    else:
+        return "<p>Invalid source specified.</p>"
 
-@app.route('/')
+@app.route("/", methods=["GET", "POST"])
 def index():
-    return render_template('index.html')
-
-@app.route('/process', methods=['POST'])
-def process():
-    api_key = request.form['api_key']
-    option = request.form['option']
-    custom_query = request.form.get('custom_query')
-    
-    if 'pdf_file' not in request.files:
-        return jsonify({"error": "No file part"}), 400
-
-    file = request.files['pdf_file']
-    if file.filename == '':
-        return jsonify({"error": "No selected file"}), 400
-
-    # Save the PDF to a temporary file and extract its text
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
-        temp_file_path = temp_file.name
-        file.save(temp_file_path)
+    result = ""
+    if request.method == "POST":
+        if "pdf" not in request.files:
+            flash("No file part")
+            return redirect(request.url)
+        file = request.files["pdf"]
+        if file.filename == "":
+            flash("No selected file")
+            return redirect(request.url)
         
-        try:
-            text = extract_text_from_pdf(temp_file_path)
-        except Exception as e:
-            return jsonify({"error": f"Error extracting text: {e}"}), 500
-        finally:
-            os.remove(temp_file_path)  # Clean up the temporary file
+        # Save the uploaded file
+        pdf_path = os.path.join("uploads", file.filename)
+        file.save(pdf_path)
         
-        if option == '1':
-            prompt = "Act as a research assistant with 20 years of experience. Summarize the research paper provided above in 1000 words."
+        # Process the PDF based on user's choice
+        choice = request.form.get("choice")
+        text = extract_text_from_pdf(pdf_path)
+        
+        if choice == "1":
+            prompt = "Summarize the research paper provided above."
             result = process_text_with_llm(prompt, text)
-        elif option == '2':
-            prompt = "Please extract the key points from the above provided research paper."
+        elif choice == "2":
+            prompt = "Extract the key points from the above provided research paper."
             result = process_text_with_llm(prompt, text)
-        elif option == '3':
-            if custom_query:
-                prompt = (
-                    "Act as a research assistant with 20 years of experience. A research paper is provided below. "
-                    "Read it and the user will ask questions regarding the research paper. Respond accordingly.\n\n"
-                    f"User query: {custom_query}"
-                )
-                result = process_text_with_llm(prompt, text)
-            else:
-                result = "Custom query was not provided."
+        elif choice == "3":
+            user_query = request.form.get("custom_query")
+            prompt = f"Research paper provided below. User query: {user_query}"
+            result = process_text_with_llm(prompt, text)
+        elif choice == "4":
+            top_terms = get_top_terms(text)
+            top_query = " ".join(top_terms)
+            arxiv_results = search_academic_databases(top_query, source="arxiv")
+            crossref_results = search_academic_databases(top_query, source="crossref")
+            result = {
+                'arxiv': arxiv_results,
+                'crossref': crossref_results
+            }
         else:
             result = "Invalid option selected."
-
-        # Extract top terms and search for related papers
-        top_terms = get_top_terms(text, num_terms=5)
-        top_query = " ".join(top_terms)
-        relevant_papers = search_academic_databases(top_query)
         
-        return jsonify({
-            "result": result,
-            "relevant_papers": relevant_papers
-        })
+    return render_template("index.html", result=result)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
+    os.makedirs("uploads", exist_ok=True)
     app.run(debug=True)

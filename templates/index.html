@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Processing and Research Paper Search</title>
+    <title>Research Paper Processor</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -88,77 +88,50 @@
         #custom-query-container {
             margin-top: 10px;
         }
-
-        .error {
-            color: red;
-            font-weight: bold;
-        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>PDF Processing and Research Paper Search</h1>
-        <form id="upload-form" action="/process" method="post" enctype="multipart/form-data">
-            <div class="form-group">
-                <label for="api_key">API Key:</label>
-                <input type="text" id="api_key" name="api_key" required>
-            </div>
-            <div class="form-group">
-                <label for="pdf_file">Upload PDF:</label>
-                <input type="file" id="pdf_file" name="pdf_file" required>
-            </div>
-            <div class="form-group">
-                <label>Option:</label>
-                <input type="radio" id="option1" name="option" value="1" required>
-                <label for="option1">Summarize Paper</label>
-                <input type="radio" id="option2" name="option" value="2">
-                <label for="option2">Extract Key Points</label>
-                <input type="radio" id="option3" name="option" value="3">
-                <label for="option3">Custom Query</label>
-            </div>
-            <div class="form-group" id="custom-query-container" style="display:none;">
+        <h1>Research Paper Processor</h1>
+        <form method="post" enctype="multipart/form-data">
+            <label for="pdf">Upload PDF:</label>
+            <input type="file" id="pdf" name="pdf" required>
+            <br><br>
+            <label for="choice">Select an option:</label>
+            <select id="choice" name="choice" required>
+                <option value="1">Summarize Paper</option>
+                <option value="2">Extract Key Points</option>
+                <option value="3">Custom Query</option>
+                <option value="4">Search Databases</option>
+            </select>
+            <br><br>
+            <div id="custom-query-container" style="display: none;">
                 <label for="custom_query">Custom Query:</label>
                 <input type="text" id="custom_query" name="custom_query">
+                <br><br>
             </div>
-            <div class="form-group">
-                <input type="submit" value="Process">
-            </div>
+            <button type="submit">Submit</button>
         </form>
-        <div id="result-container" class="results-container"></div>
+        
+        <div id="result-container">
+            <h2>Results:</h2>
+            <div id="results">
+                <div class="result-section">
+                    <h3>ArXiv Results:</h3>
+                    {{ result.arxiv|safe }}
+                </div>
+                <div class="result-section">
+                    <h3>CrossRef Results:</h3>
+                    {{ result.crossref|safe }}
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
-        document.querySelectorAll('input[name="option"]').forEach((radio) => {
-            radio.addEventListener('change', () => {
-                document.getElementById('custom-query-container').style.display =
-                    document.getElementById('option3').checked ? 'block' : 'none';
-            });
-        });
-
-        document.getElementById('upload-form').addEventListener('submit', function(event) {
-            event.preventDefault();
-            let formData = new FormData(this);
-
-            fetch('/process', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    document.getElementById('result-container').innerHTML = `<p class="error">${data.error}</p>`;
-                } else {
-                    document.getElementById('result-container').innerHTML = `
-                        <h2>Processing Result:</h2>
-                        <p>${data.result}</p>
-                        <h2>Relevant Research Papers:</h2>
-                        <pre>${data.relevant_papers}</pre>
-                    `;
-                }
-            })
-            .catch(error => {
-                document.getElementById('result-container').innerHTML = `<p class="error">An unexpected error occurred: ${error}</p>`;
-            });
+        document.getElementById('choice').addEventListener('change', function() {
+            const value = this.value;
+            document.getElementById('custom-query-container').style.display = (value == '3') ? 'block' : 'none';
         });
     </script>
 </body>
