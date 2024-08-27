@@ -35,11 +35,6 @@ The AI-Powered Research Assistant is structured as follows:
    - **State Management**:
      - Uses `langgraph` to manage the state of the chatbot and handle transitions between different tasks.
 
-6. **Web Interface (Optional)**:
-   - Allows users to upload PDF files and interact with the chatbot through a web interface.
-   - The web interface is built using Flask, handling PDF uploads and displaying results.
-
-
 ## Features
 
 
