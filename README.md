@@ -35,6 +35,10 @@ The AI-Powered Research Assistant is structured as follows:
    - **State Management**:
      - Uses `langgraph` to manage the state of the chatbot and handle transitions between different tasks.
 
+6. **Web Interface (Optional)**:
+   - Allows users to upload PDF files and interact with the chatbot through a web interface.
+   - The web interface is built using Flask, handling PDF uploads and displaying results.
+
 ## Features
 
 
@@ -75,8 +79,6 @@ from icecream import ic
 from typing import Annotated, List
 from typing_extensions import TypedDict
 ```
-
-
 
 ## Usage
 **Run the application**:
@@ -128,3 +130,39 @@ If you select option 3, you can enter a custom query to ask questions about the 
 ## Example
 Here's an example of how the application might be used:
 ![image](https://github.com/user-attachments/assets/f4588785-5ef4-4651-bcf2-101fbba9f747)
+
+## Running the Website
+
+To run the web-based version of the AI-Powered Research Assistant, follow these steps:
+
+1. **Ensure Dependencies are Installed**:
+
+   Before running the website, make sure you have installed all the required dependencies:
+```python
+import os
+import fitz  # PyMuPDF for PDF extraction
+import requests
+import numpy as np
+import getpass
+from flask import Flask, render_template, request, redirect, url_for, flash
+from xml.etree import ElementTree as ET
+from sklearn.feature_extraction.text import TfidfVectorizer
+from langchain_anthropic import ChatAnthropic
+```
+
+2. **Start the application by running the following command**:
+```python
+python research_assistant_website.py
+```
+
+3. **Set Up Your Environment**:
+   
+   Make sure to set up any necessary environment variables. Specifically, you'll need to input your `Anthropic API Key` in the terminal.
+
+4. **Access the Website**:
+   Open a web browser and navigate to the following URL:
+
+```http://127.0.0.1:5000```
+
+![image](https://github.com/user-attachments/assets/3badfae1-75dd-49d0-b3ca-9e370641bab1)
+
