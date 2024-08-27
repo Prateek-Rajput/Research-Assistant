@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Processing and Research Paper Search</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: url('/static/ai-background.jpg') no-repeat center center fixed;
+            background-size: cover;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-top: 50px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .form-group input[type="file"],
+        .form-group input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .form-group input[type="radio"] {
+            margin-right: 10px;
+        }
+
+        .form-group input[type="submit"] {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .form-group input[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+
+        .results-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .result-box {
+            background: #f9f9f9;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            overflow-y: auto;
+            max-height: 400px;
+        }
+
+        .form-group h2 {
+            margin-bottom: 10px;
+        }
+
+        #custom-query-container {
+            margin-top: 10px;
+        }
+
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>PDF Processing and Research Paper Search</h1>
+        <form id="upload-form" action="/process" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="api_key">API Key:</label>
+                <input type="text" id="api_key" name="api_key" required>
+            </div>
+            <div class="form-group">
+                <label for="pdf_file">Upload PDF:</label>
+                <input type="file" id="pdf_file" name="pdf_file" required>
+            </div>
+            <div class="form-group">
+                <label>Option:</label>
+                <input type="radio" id="option1" name="option" value="1" required>
+                <label for="option1">Summarize Paper</label>
+                <input type="radio" id="option2" name="option" value="2">
+                <label for="option2">Extract Key Points</label>
+                <input type="radio" id="option3" name="option" value="3">
+                <label for="option3">Custom Query</label>
+            </div>
+            <div class="form-group" id="custom-query-container" style="display:none;">
+                <label for="custom_query">Custom Query:</label>
+                <input type="text" id="custom_query" name="custom_query">
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Process">
+            </div>
+        </form>
+        <div id="result-container" class="results-container"></div>
+    </div>
+
+    <script>
+        document.querySelectorAll('input[name="option"]').forEach((radio) => {
+            radio.addEventListener('change', () => {
+                document.getElementById('custom-query-container').style.display =
+                    document.getElementById('option3').checked ? 'block' : 'none';
+            });
+        });
+
+        document.getElementById('upload-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            let formData = new FormData(this);
+
+            fetch('/process', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    document.getElementById('result-container').innerHTML = `<p class="error">${data.error}</p>`;
+                } else {
+                    document.getElementById('result-container').innerHTML = `
+                        <h2>Processing Result:</h2>
+                        <p>${data.result}</p>
+                        <h2>Relevant Research Papers:</h2>
+                        <pre>${data.relevant_papers}</pre>
+                    `;
+                }
+            })
+            .catch(error => {
+                document.getElementById('result-container').innerHTML = `<p class="error">An unexpected error occurred: ${error}</p>`;
+            });
+        });
+    </script>
+</body>
+</html>
