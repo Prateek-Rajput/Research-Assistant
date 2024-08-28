@@ -129,7 +129,10 @@ If you select option 3, you can enter a custom query to ask questions about the 
 
 ## Example
 Here's an example of how the application might be used:
-![image](https://github.com/user-attachments/assets/f4588785-5ef4-4651-bcf2-101fbba9f747)
+![image](https://github.com/user-attachments/assets/4b1441a6-9532-4eb2-966d-b96e00b2932c)
+![image](https://github.com/user-attachments/assets/2f1af30f-a255-4ca0-8610-84b0ad352abb)
+
+
 
 ## Running the Website
 
