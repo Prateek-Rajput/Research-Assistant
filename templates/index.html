@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Research Paper Processor</title>
+    <title>AI Research Assistant</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -117,6 +117,7 @@
             <h2>Results:</h2>
             <div id="results">
                 <div class="result-section">
+                    {{ result|safe }}
                     <h3>ArXiv Results:</h3>
                     {{ result.arxiv|safe }}
                 </div>
