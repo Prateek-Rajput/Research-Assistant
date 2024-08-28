@@ -166,6 +166,6 @@ python research_assistant_website.py
    Open a web browser and navigate to the following URL:
 
 ```http://127.0.0.1:5000```
+![image](https://github.com/user-attachments/assets/a348eacf-d51f-45d5-89cc-492625fa0d96)
 
-![image](https://github.com/user-attachments/assets/3badfae1-75dd-49d0-b3ca-9e370641bab1)
 
